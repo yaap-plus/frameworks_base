@@ -29,6 +29,8 @@ import static com.android.server.power.feature.flags.Flags.perDisplayWakeByTouch
 
 import android.annotation.Nullable;
 import android.content.Context;
+import android.provider.Settings;
+import android.content.ContentResolver;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeReason;
 import android.os.SystemClock;
@@ -40,11 +42,14 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.os.Clock;
 import com.android.server.LocalServices;
 
+import static com.android.server.policy.WindowManagerPolicy.WindowManagerFuncs.LID_BEHAVIOR_NONE;
+
 /** Policy controlling the decision and execution of window-related wake ups. */
 class WindowWakeUpPolicy {
     private static final String TAG = "WindowWakeUpPolicy";
 
     private final PowerManager mPowerManager;
+    private final Context mContext;
     private final Clock mClock;
 
     // The policy will handle input-based wake ups if this delegate is null.
@@ -56,6 +61,7 @@ class WindowWakeUpPolicy {
 
     @VisibleForTesting
     WindowWakeUpPolicy(Context context, Clock clock) {
+        mContext = context;
         mPowerManager = context.getSystemService(PowerManager.class);
         mClock = clock;
 
@@ -152,7 +158,13 @@ class WindowWakeUpPolicy {
      *      executed; {@code false} otherwise.
      */
     boolean wakeUpFromLid() {
-        wakeUp(mClock.uptimeMillis(), WAKE_REASON_LID, "LID");
+        int lidBehavior = Settings.Global.getInt(
+                mContext.getContentResolver(),
+                Settings.Global.LID_BEHAVIOR,
+                LID_BEHAVIOR_NONE);
+        if (lidBehavior != LID_BEHAVIOR_NONE) {
+            wakeUp(mClock.uptimeMillis(), WAKE_REASON_LID, "LID");
+        }
         return true;
     }
 
